@@ -28,7 +28,7 @@ function generateAuth(body, timestamp) {
   return `SHA256 Credential=${partner_id}, Timestamp=${timestamp}, Signature=${signature}`;
 }
 
-// 🚀 ROTA (OBRIGATÓRIO pro Render)
+// 🚀 ROTA PRINCIPAL
 app.post("/gerar-link", async (req, res) => {
   try {
     const { url } = req.body;
@@ -54,41 +54,4 @@ mutation {
 
     const auth = generateAuth(body, timestamp);
 
-    const response = await axios.post(
-      "https://open-api.affiliate.shopee.com.br/graphql",
-      body,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": auth
-        },
-        timeout: 15000
-      }
-    );
-
-    const link =
-      response.data?.data?.generateShortLink?.shortLink;
-
-    return res.json({ link });
-
-  } catch (error) {
-    console.log("❌ ERRO:", error.response?.data || error.message);
-
-    return res.status(500).json({
-      error: "Falha ao gerar link",
-      detalhe: error.response?.data || error.message
-    });
-  }
-});
-
-// 🧪 TESTE RENDER (ESSENCIAL)
-app.get("/", (req, res) => {
-  res.send("API Shopee rodando 🚀");
-});
-
-// 🚀 START OBRIGATÓRIO
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Servidor rodando na porta " + PORT);
-});
+    const response = await
