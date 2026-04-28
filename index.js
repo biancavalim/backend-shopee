@@ -8,11 +8,11 @@ app.use(express.json());
 const partner_id = "18383580742";
 const partner_key = "SVKIDYM7SDFMF6DRRKMWHSKGOOITWSAS";
 
-function generateAuth(body, timestamp) {
+function generateAuth(timestamp) {
   const path = "/graphql";
 
   const baseString =
-    partner_id + path + timestamp + body;
+    partner_id + path + timestamp;
 
   const signature = crypto
     .createHmac("sha256", partner_key)
@@ -39,17 +39,13 @@ mutation {
 }
 `;
 
-    const body = JSON.stringify({ query });
-
-    const auth = generateAuth(body, timestamp);
-
     const response = await axios.post(
       "https://open-api.affiliate.shopee.com.br/graphql",
-      body,
+      { query },
       {
         headers: {
           "Content-Type": "application/json",
-          "Authorization": auth
+          "Authorization": generateAuth(timestamp)
         }
       }
     );
