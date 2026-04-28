@@ -1,32 +1,8 @@
 const express = require("express");
-const crypto = require("crypto");
 const axios = require("axios");
 
 const app = express();
 app.use(express.json());
-
-const partner_id = "18383580742";
-const partner_key = "SVKIDYM7SDFMF6DRRKMWHSKGOOITWSAS";
-
-// 🔐 AUTH
-function generateAuth(body, timestamp) {
-  const path = "/graphql";
-
-  const bodyHash = crypto
-    .createHash("sha256")
-    .update(body)
-    .digest("hex");
-
-  const baseString =
-    partner_id + path + timestamp + bodyHash;
-
-  const signature = crypto
-    .createHmac("sha256", partner_key)
-    .update(baseString)
-    .digest("hex");
-
-  return `SHA256 Credential=${partner_id}, Timestamp=${timestamp}, Signature=${signature}`;
-}
 
 // 🚀 ROTA PRINCIPAL
 app.post("/gerar-link", async (req, res) => {
@@ -36,8 +12,6 @@ app.post("/gerar-link", async (req, res) => {
     if (!url) {
       return res.status(400).json({ error: "URL não enviada" });
     }
-
-    const timestamp = Math.floor(Date.now() / 1000);
 
     const query = `
 mutation {
@@ -50,27 +24,28 @@ mutation {
 }
 `;
 
-    const body = JSON.stringify({ query });
-
-    const auth = generateAuth(body, timestamp);
-
-    // 🔥 AQUI ESTAVA FALTANDO
     const response = await axios.post(
       "https://open-api.affiliate.shopee.com.br/graphql",
-      body,
+      { query },
       {
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": auth
+          "Content-Type": "application/json"
         },
         timeout: 15000
       }
     );
 
-    console.log("📦 RESPOSTA:", JSON.stringify(response.data, null, 2));
+    console.log("📦 RESPOSTA SHOPEE:", JSON.stringify(response.data, null, 2));
 
     const link =
       response.data?.data?.generateShortLink?.shortLink;
+
+    if (!link) {
+      return res.status(500).json({
+        error: "Shopee não retornou link",
+        debug: response.data
+      });
+    }
 
     return res.json({ link });
 
@@ -89,7 +64,7 @@ app.get("/", (req, res) => {
   res.send("API Shopee rodando 🚀");
 });
 
-// 🚀 START (OBRIGATÓRIO NO RENDER)
+// 🚀 START
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
