@@ -1,17 +1,32 @@
 const express = require("express");
+const crypto = require("crypto");
 const axios = require("axios");
 
 const app = express();
 app.use(express.json());
 
-// 🚀 ROTA PRINCIPAL
+const partner_id = "18383580742";
+const partner_key = "SVKIDYM7SDFMF6DRRKMWHSKGOOITWSAS";
+
+function generateAuth(body, timestamp) {
+  const path = "/graphql";
+
+  const baseString =
+    partner_id + path + timestamp + body;
+
+  const signature = crypto
+    .createHmac("sha256", partner_key)
+    .update(baseString)
+    .digest("hex");
+
+  return `SHA256 Credential=${partner_id}, Timestamp=${timestamp}, Signature=${signature}`;
+}
+
 app.post("/gerar-link", async (req, res) => {
   try {
     const { url } = req.body;
 
-    if (!url) {
-      return res.status(400).json({ error: "URL não enviada" });
-    }
+    const timestamp = Math.floor(Date.now() / 1000);
 
     const query = `
 mutation {
@@ -24,49 +39,30 @@ mutation {
 }
 `;
 
+    const body = JSON.stringify({ query });
+
+    const auth = generateAuth(body, timestamp);
+
     const response = await axios.post(
       "https://open-api.affiliate.shopee.com.br/graphql",
-      { query },
+      body,
       {
         headers: {
-          "Content-Type": "application/json"
-        },
-        timeout: 15000
+          "Content-Type": "application/json",
+          "Authorization": auth
+        }
       }
     );
 
-    console.log("📦 RESPOSTA SHOPEE:", JSON.stringify(response.data, null, 2));
-
-    const link =
-      response.data?.data?.generateShortLink?.shortLink;
-
-    if (!link) {
-      return res.status(500).json({
-        error: "Shopee não retornou link",
-        debug: response.data
-      });
-    }
-
-    return res.json({ link });
+    return res.json(response.data);
 
   } catch (error) {
-    console.log("❌ ERRO:", error.response?.data || error.message);
-
     return res.status(500).json({
-      error: "Falha ao gerar link",
+      error: "Falha",
       detalhe: error.response?.data || error.message
     });
   }
 });
 
-// 🧪 TESTE
-app.get("/", (req, res) => {
-  res.send("API Shopee rodando 🚀");
-});
-
-// 🚀 START
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Servidor rodando na porta " + PORT);
-});
+app.listen(PORT, () => console.log("rodando"));
