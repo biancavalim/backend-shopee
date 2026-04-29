@@ -11,17 +11,18 @@ const partner_key = "SVKIDYM7SDFMF6DRRKMWHSKGOOITWSAS";
 function generateAuth(body, timestamp) {
   const path = "/graphql";
 
+  // 🔥 HASH DO BODY EXATO
   const bodyHash = crypto
     .createHash("sha256")
-    .update(body)
+    .update(body, "utf8")
     .digest("hex");
 
-  const baseString =
-    partner_id + path + timestamp + bodyHash;
+  // 🔥 BASE STRING EXATA
+  const baseString = `${partner_id}${path}${timestamp}${bodyHash}`;
 
   const signature = crypto
     .createHmac("sha256", partner_key)
-    .update(baseString)
+    .update(baseString, "utf8")
     .digest("hex");
 
   return `SHA256 Credential=${partner_id}, Timestamp=${timestamp}, Signature=${signature}`;
@@ -31,18 +32,17 @@ app.post("/gerar-link", async (req, res) => {
   try {
     const { url } = req.body;
 
-    const query = `
-mutation {
-  generateShortLink(input: {
-    originUrl: "${url}",
-    subIds: ["s1"]
-  }) {
-    shortLink
-  }
-}
-`;
+    if (!url) {
+      return res.status(400).json({ error: "URL não enviada" });
+    }
 
-    const body = JSON.stringify({ query });
+    // 🔥 STRING SEM QUEBRA ERRADA
+    const query = `mutation { generateShortLink(input: { originUrl: "${url}", subIds: ["s1"] }) { shortLink } }`;
+
+    // 🔥 BODY EXATO
+    const body = JSON.stringify({
+      query: query
+    });
 
     const timestamp = Math.floor(Date.now() / 1000);
 
@@ -59,10 +59,7 @@ mutation {
       }
     );
 
-    const link =
-      response.data?.data?.generateShortLink?.shortLink;
-
-    return res.json({ link });
+    return res.json(response.data);
 
   } catch (error) {
     return res.status(500).json({
